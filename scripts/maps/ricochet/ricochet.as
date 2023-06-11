@@ -36,7 +36,6 @@ const int FREEZE_SPEED = 50;
 
 array<CScheduledFunction@> g_playerForceSpawn;
 array<CScheduledFunction@> g_playerShrink;
-array<CScheduledFunction@> g_cameraSpin;
 
 array<EHandle> g_hLastPlayersToHit;
 array<float> g_flLastDiscHit;
@@ -95,9 +94,6 @@ void MapInit()
 	
 	g_playerShrink.resize(0);
 	g_playerShrink.resize(33);
-	
-	g_cameraSpin.resize(0);
-	g_cameraSpin.resize(33);
 	
 	g_iLastDiscBounces.resize(0);
 	g_iLastDiscBounces.resize(33);
@@ -231,8 +227,7 @@ HookReturnCode PlayerSpawn( CBasePlayer@ pPlayer )
 		return HOOK_CONTINUE;
 		
 	g_Scheduler.RemoveTimer( g_playerForceSpawn[ pPlayer.entindex() ] );
-	g_Scheduler.RemoveTimer( g_playerShrink[ pPlayer.entindex() ]);
-	g_Scheduler.RemoveTimer( g_cameraSpin[ pPlayer.entindex() ]);		
+	g_Scheduler.RemoveTimer( g_playerShrink[ pPlayer.entindex() ]);	
 	
 	pPlayer.pev.scale = 1;
 	g_SoundSystem.EmitSound( pPlayer.edict(), CHAN_STREAM, "ricochet/r_tele1.wav", 1, ATTN_NORM );
@@ -269,7 +264,6 @@ HookReturnCode PlayerDisconnected( CBasePlayer@ pPlayer )
 {
 	g_Scheduler.RemoveTimer( g_playerForceSpawn[ pPlayer.entindex() ] );
 	g_Scheduler.RemoveTimer( g_playerShrink[ pPlayer.entindex() ]);
-	g_Scheduler.RemoveTimer( g_cameraSpin[ pPlayer.entindex() ]);
 	
 	return HOOK_CONTINUE;
 }
@@ -636,11 +630,12 @@ class CTriggerFall: ScriptBaseEntity
 		
 		dictionary cameraValues = 
 		{
-			{ "origin", "" + pOther.pev.origin.ToString() },
+			{ "origin", "" + ( pOther.pev.origin + Vector( 0, 0, 32 ) ).ToString() },
 			{ "wait", "5" },
 			{ "angles", Vector( 90, 0, 0 ).ToString() },
 			{ "spawnflags", "16" },
-			{ "targetname", "camera_PID_" + iEntityIndex }
+			{ "targetname", "camera_PID_" + iEntityIndex },
+			{ "avelocity", Vector( 0, -150, 0 ).ToString() }
 		};
 		
 		CBaseEntity@ pCamera = g_EntityFuncs.CreateEntity( "trigger_camera", cameraValues );
@@ -653,7 +648,6 @@ class CTriggerFall: ScriptBaseEntity
 		
 		@g_playerForceSpawn[ iEntityIndex ] = g_Scheduler.SetTimeout( "ForceSpawn", 4 , EHandle( pOther ) );
 		@g_playerShrink[ iEntityIndex ] = g_Scheduler.SetInterval( "ShrinkModel", 0.05, 25, EHandle( pOther ) );
-		@g_cameraSpin[ iEntityIndex ] = g_Scheduler.SetInterval( "SpinCamera", 0.01, 500, EHandle( pCamera ) );
 		
 		pOther.pev.velocity.x = 0;
 		pOther.pev.velocity.y = 0;
@@ -679,15 +673,6 @@ void ShrinkModel( EHandle hPlayer )
 	CBasePlayer@ pPlayer = cast<CBasePlayer@>( hPlayer.GetEntity() );
 	if( pPlayer.pev.scale > 0.04 )
 		pPlayer.pev.scale -= 0.04;
-}
-
-void SpinCamera( EHandle hCamera )
-{
-	if( !hCamera )
-		return;
-		
-	CBaseEntity@ pCamera = cast<CBaseEntity@>( hCamera.GetEntity() );
-	pCamera.pev.angles.y -= 2;
 }
 
 class CTriggerDiscReturn: ScriptBaseEntity
